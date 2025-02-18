@@ -19,11 +19,13 @@
 | 0.1 | 02/17/2025 | Ramesh Raghupathy | Initial version    |
 
 ## Glossory ##
-
+ authenticai
 | Term  | Meaning                                   |
 | ----- | ----------------------------------------- |
 | DPU   | Data Processing Unit                      |
 | NPU   | Network Processing Unit                   |
+| EDVT  | Electrical Design Verification Testing    |
+| SSH   | Secure Shell                              |
 
 ## Problem Definition ##
 
@@ -31,7 +33,13 @@ There are uses cases such as utility scripts, sonic-management tests, EDVT, manu
 
 ## Solution ##
 
-Process hardening by sharing the host (NPU) ssh public keys with the DPUs
+After considering the following three options, SSH key-based authentication seems to be a more suitable option for this purpose.
+
+1. Configure the DPU with the default user account having  "NOPASSWD" privileges in the /etc/sudoers file. The downside to this approach is that, disabling passwords completely leaves the system highly vulnerable to unauthorized access.
+
+2. SSH key-based authentication: Set up SSH key pairs to allow logins without a password using public key cryptography. Share the host (NPU) ssh public keys with the DPUs.
+
+3. Using a third party authentication server. This is slightly heavy weight for this purpose.
 
 ## Assumption ##
 
