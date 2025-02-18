@@ -43,7 +43,7 @@ After considering the following three options, SSH key-based authentication seem
 
 ## Assumption ##
 
-Any user having access to the NPU will be able to access the DPUs in a SmartSwitch.
+Any user having access to the NPU will be able to access the DPUs in a SmartSwitch irrespective of their privileges during the window where password less ssh is enabled.
 
 ## Requirement ##
 
