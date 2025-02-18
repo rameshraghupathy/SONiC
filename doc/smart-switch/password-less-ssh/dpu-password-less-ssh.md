@@ -65,18 +65,18 @@ On host:
 4.	Connect to DPUs using ssh without password
 * ssh admin@169.254.200.1  (no password needed)
 
-## Trigger using CLI on NPU ##
-The sequence flow diagram clearly shown the behavior
-* Extend the “config chassis modules …” CLI and “show chassis modules …” CLIs to solve this purpose
+## Enable/Disable password less ssh using a CLI on NPU ##
+The flow diagram clearly shows the behavior in detail.
+* Extend the “config chassis modules …” CLI and “show chassis modules …” CLIs to solve this purpose.
 * New CLI on NPU:
   ```
   config chassis modules enable_passwordless_ssh  --username <optional> --password <optional>
   ```
-* When the credentials are not provided through the CLI the credential file on the NPU “/usr/share/sonic/device/<platform>/dpupassword” will be used.  If this file doesn’t exist then the passwordless_ssh will not be enabled
+* When the credentials are not provided through the CLI the credential file on the NPU “/usr/share/sonic/device/<platform>/dpupassword” will be used.  If this file also doesn’t exist then the passwordless_ssh will not be enabled.
 
-* When the credentials are provided there will be two options either to overwrite the existing file or the append to the existing file.  Then this file will be used for copying the keys the first time
+* When the credentials are provided there will be two options either to overwrite the existing file or the append to the existing file.  Then this file will be used for copying the keys the first time.
 
-* config chassis modules disable_passwordless_ssh  DPUx  is another CLI used the disable the password. This CLI will wipeout the known hosts file on the specified DPUx
+* config chassis modules disable_passwordless_ssh  DPUx  is another CLI used to disable the password. This CLI will wipeout the known hosts file on the specified DPUx
 
 * config chassis modules disable_passwordless_ssh  all .  This will wipeout the known hosts file on all DPUs and also remove the credential file.
 
