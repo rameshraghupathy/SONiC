@@ -28,7 +28,7 @@ The following sequence diagram illustrates the detailed steps involved in the gr
 
 1. **Daemon Initialization:**
 
-   * Upon startup, `gnoi_reboot_daemon.py` subscribes to the `CHASSIS_MODULE_INFO_TABLE` to monitor incoming shutdown/reboot requests. The state transition will be no-op for startup requests.
+   * Upon startup, `gnoi_reboot_daemon.py` subscribes to the `CHASSIS_MODULE_TABLE` to monitor incoming shutdown/reboot requests. The state transition will be no-op for startup requests.
 
 2. **CLI Command Execution:**
 
@@ -48,11 +48,11 @@ The following sequence diagram illustrates the detailed steps involved in the gr
 
 5. **Reboot Request Creation:**
 
-   * Within the `graceful_shutdown_handler()`, `state_transition_in_progress` `True`is written to the `CHASSIS_MODULE_INFO_TABLE` in Redis STATE_DB for DPUx along with `transition_type`.
+   * Within the `graceful_shutdown_handler()`, `state_transition_in_progress` `True`is written to the `CHASSIS_MODULE_TABLE` in Redis STATE_DB for DPUx along with `transition_type`.
 
 6. **Daemon Notification and Processing:**
 
-   * `gnoi_reboot_daemon.py` detects the `state_transition_in_progress` turning `True` in `CHASSIS_MODULE_INFO_TABLE` and sends a gNOI Reboot RPC with the method `HALT` to the sysmgr in DPUx, which in turn issues a DBUS request to execute `reboot -p` on DPUx.
+   * `gnoi_reboot_daemon.py` detects the `state_transition_in_progress` turning `True` in `CHASSIS_MODULE_TABLE` and sends a gNOI Reboot RPC with the method `HALT` to the sysmgr in DPUx, which in turn issues a DBUS request to execute `reboot -p` on DPUx.
 
 7. **Reboot Request**:
 
@@ -68,13 +68,13 @@ The following sequence diagram illustrates the detailed steps involved in the gr
 
 10. **Reboot Result Update in DB:**
 
-      * The daemon writes the reboot result to the `CHASSIS_MODULE_INFO_TABLE` in Redis STATE_DB by turning `state_transition_in_progress` to `False` when after the platform API completes the power down operation of the modules as shown in step 13.
+      * The daemon writes the reboot result to the `CHASSIS_MODULE_TABLE` in Redis STATE_DB by turning `state_transition_in_progress` to `False` when after the platform API completes the power down operation of the modules as shown in step 13.
 
       * In case of a reboot result failure the result gets updated after the timeout.
 
 11. **Read the Result:**
 
-      * `module_base.py` in a loop reads the `state_transition_in_progress` turning `False` in `CHASSIS_MODULE_INFO_TABLE` every 5 secs.
+      * `module_base.py` in a loop reads the `state_transition_in_progress` turning `False` in `CHASSIS_MODULE_TABLE` every 5 secs.
 
 12. **Log the Result:**
 
@@ -102,9 +102,9 @@ This design enables the `chassisd` process running in the PMON container to invo
 
 In the Redis STATE_DB IPC approach, SONiC leverages Redis's publish-subscribe mechanism to facilitate inter-process communication between components. This event-driven design ensures decoupled and reliable communication between components.
 
-### CHASSIS_MODULE_INFO_TABLE Schema (STATE_DB)
+### CHASSIS_MODULE_TABLE Schema (STATE_DB)
 
-KEY: `CHASSIS_MODULE_INFO_TABLE|<MODULE_NAME>`.
+KEY: `CHASSIS_MODULE_TABLE|<MODULE_NAME>`.
 
 | Field                          | Description                                                                                              |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------- |
@@ -114,7 +114,7 @@ KEY: `CHASSIS_MODULE_INFO_TABLE|<MODULE_NAME>`.
 
 **Example:**
 ```
-CHASSIS_MODULE_INFO_TABLE|DPU0
+CHASSIS_MODULE_TABLE|DPU0
 {
   "state_transition_in_progress": "True",
   "transition_start_time": "Mon Jun 17 08:32:10 UTC 2025",
@@ -138,7 +138,7 @@ The following sequence diagram illustrates the parallel execution of graceful sh
 
 <p align="center"><img src="./images/reboot-interoperability.svg"></p>
 
-The diagram above illustrates scenarios where both module_base.py and smartswitch_reboot_helper might attempt to initiate a shutdown, startup and reboot simultaneously. When there is a race condition the one that writes the `CHASSIS_MODULE_INFO_TABLE`  `state_transition_in_progress` field wins. In case if the `state_transition_in_progress` is `True` as a result of DPU startup in progress both reboot and shutdown will fail. It is up to the requesting module to re-issue the transaction if needed. When the module level reboot and switch level reboot happen simultaneously, if the module level reboot has already updated the
+The diagram above illustrates scenarios where both module_base.py and smartswitch_reboot_helper might attempt to initiate a shutdown, startup and reboot simultaneously. When there is a race condition the one that writes the `CHASSIS_MODULE_TABLE`  `state_transition_in_progress` field wins. In case if the `state_transition_in_progress` is `True` as a result of DPU startup in progress both reboot and shutdown will fail. It is up to the requesting module to re-issue the transaction if needed. When the module level reboot and switch level reboot happen simultaneously, if the module level reboot has already updated the
 `state_transition_in_progress` to `True` the switch level reboot needs to be reissued.  If the switch level reboot happens first it will grab all the module
 `state_transition_in_progress` and set them to `True` as a first step and runs to completion.
 
@@ -146,35 +146,35 @@ The diagram above illustrates scenarios where both module_base.py and smartswitc
 
  The same scenario applies if "config reload" happens when reboot is in progress.
 
-* smartswitch_reboot_helper writes to `CHASSIS_MODULE_INFO_TABLE`  with `state_transition_in_progress` to `True`.
+* smartswitch_reboot_helper writes to `CHASSIS_MODULE_TABLE`  with `state_transition_in_progress` to `True`.
 
-* If module_base.py attempts to write to `CHASSIS_MODULE_INFO_TABLE`  with `state_transition_in_progress` `True` during this process, the operation will fail. The user has to retry the shutdown operation later.
+* If module_base.py attempts to write to `CHASSIS_MODULE_TABLE`  with `state_transition_in_progress` `True` during this process, the operation will fail. The user has to retry the shutdown operation later.
 
-* When the reboot is complete the  `CHASSIS_MODULE_INFO_TABLE` `state_transition_in_progress` will be set to `False`. The module_base.py has to retry the shutdown/startup operation as needed when the reboot is complete.
+* When the reboot is complete the  `CHASSIS_MODULE_TABLE` `state_transition_in_progress` will be set to `False`. The module_base.py has to retry the shutdown/startup operation as needed when the reboot is complete.
 
 **Scenario 2:** smartswitch_reboot_helper module issues a reboot when module_base graceful shutdown is in progress.
 
-* module_base.py writes to `CHASSIS_MODULE_INFO_TABLE`  with `state_transition_in_progress` `True` and sets the `"transition_type": "shutdown"`.
+* module_base.py writes to `CHASSIS_MODULE_TABLE`  with `state_transition_in_progress` `True` and sets the `"transition_type": "shutdown"`.
 
 * gnoi_reboot_daemon.py is notified of the new entry and proceeds to send a gNOI Reboot RPC with the method HALT to the sysmgr in DPUx.
 
-* The daemon writes the reboot result to the `CHASSIS_MODULE_INFO_TABLE` by toggling `state_transition_in_progress`  to `False`.
+* The daemon writes the reboot result to the `CHASSIS_MODULE_TABLE` by toggling `state_transition_in_progress`  to `False`.
 
-* If smartswitch_reboot_helper also attempts to write to `CHASSIS_MODULE_INFO_TABLE`  with `state_transition_in_progress` `True` during this process, the operation will fail.
+* If smartswitch_reboot_helper also attempts to write to `CHASSIS_MODULE_TABLE`  with `state_transition_in_progress` `True` during this process, the operation will fail.
 
 * The graceful shutdown completes as planned. So, there is no need for the reboot in this situation.
 
 **Scenario 3:** smartswitch_reboot_helper module issues a reboot when module_base startup is in progress.
 
-* module_base.py writes to `CHASSIS_MODULE_INFO_TABLE`  with `state_transition_in_progress` `True`.
+* module_base.py writes to `CHASSIS_MODULE_TABLE`  with `state_transition_in_progress` `True`.
 
-* If smartswitch_reboot_helper also attempts to write to `CHASSIS_MODULE_INFO_TABLE`  with `state_transition_in_progress` `True` during this process, the operation will fail.
+* If smartswitch_reboot_helper also attempts to write to `CHASSIS_MODULE_TABLE`  with `state_transition_in_progress` `True` during this process, the operation will fail.
 
 * The module startup completes as planned. So, the reboot may not be needed in this situation.
 
 **Scenario 4:** module_base issues a graceful shutdown when the module startup is in progress or vice versa.
 
-* If module_base.py writes to `CHASSIS_MODULE_INFO_TABLE`  with `state_transition_in_progress` `True` indicating startup or shutdown is in progress.
+* If module_base.py writes to `CHASSIS_MODULE_TABLE`  with `state_transition_in_progress` `True` indicating startup or shutdown is in progress.
 
 * If module_base.py issues another startup or shutdown to the same module that will fail and the user has to issue it again later when the previous operation is complete.
 
